@@ -1,0 +1,28 @@
+name: Java CI with Maven
+
+# 1. KIEDY MA SIĘ ODPALIĆ? Przy każdym "git push" na główną gałąź (main)
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    # 2. GDZIE MA SIĘ ODPALIĆ? Na najnowszym, czystym systemie Ubuntu (Linux) w chmurze
+    runs-on: ubuntu-latest
+
+    steps:
+      # Krok 1: Robot pobiera Twój kod z repozytorium na swój wirtualny komputer
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Krok 2: Robot instaluje Javę (wersję 21, dopasowaną do Spring Boot 3)
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven' # Przyspiesza kolejne budowania, zapamiętując biblioteki
+
+      # Krok 3: Robot odpala Mavena, żeby skompilować kod i zbudować plik .jar
+      - name: Build with Maven
+        run: mvn clean package
