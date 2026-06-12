@@ -1,0 +1,51 @@
+name: CI/CD Deploy to AWS
+
+on:
+  push:
+    branches: [ "main", "master" ] # Rurociąg odpali się przy każdym pushu do main lub master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 # Zmienimy na inną wersję, jeśli Twój Spring używa innej
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven' # jeśli używasz Gradle, zmień na 'gradle'
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests # Budujemy JARa, pomijając testy na czas pierwszego wdrożenia
+
+      - name: Copy Files to AWS EC2 via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "target/*.jar,Dockerfile" # Przesyłamy tylko zbudowany plik JAR i instrukcję Dockerfile
+          target: "~/app"
+          strip_components: 0
+
+      - name: Execute Remote SSH Commands to Run Docker
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ~/app
+            # Rejestrujemy starą wersję kontenera, jeśli istnieje, żeby nie blokowała portu
+            docker stop currency-service || true
+            docker rm currency-service || true
+            
+            # Budujemy świeży obraz Dockera na serwerze z naszego JARa
+            docker build -t currency-service .
+            
+            # Odpalamy aplikację na porcie 8080
+            docker run -d --name currency-service -p 80:8082 currency-service

@@ -1,13 +1,10 @@
-# Krok 1: Budowanie aplikacji (Maven + Java 21)
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn clean package -DskipTests
 
-# Krok 2: Uruchomienie aplikacji
-FROM eclipse-temurin:21-jre
-WORKDIR /app
-COPY --from=build /app/target/app.jar app.jar
+# Kopiujemy plik JAR, który GitHub Actions zbuduje i prześle nam do folderu target
+COPY target/*.jar app.jar
+
+# Port, na którym faktycznie słucha Twój Spring Boot (widzę, że u Ciebie to 8082)
 EXPOSE 8082
+
 ENTRYPOINT ["java", "-jar", "app.jar"]
