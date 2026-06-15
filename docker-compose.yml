@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: analyzer_db
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Zauważ: BRAK sekcji "ports" – baza jest niewidoczna dla świata zewnętrznego!
+
+  currency-service:
+    build: .
+    container_name: currency-service
+    ports:
+      - "80:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/analyzer_db
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      - postgres-db
+
+volumes:
+  pgdata: # Tutaj Docker będzie trzymał dane z bazy na dysku AWS, żeby nie zniknęły

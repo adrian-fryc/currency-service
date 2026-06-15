@@ -1,25 +1,29 @@
-package pl.analyzer.service; // Dostosuj pakiet do swojej struktury
+package pl.analyzer.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import pl.analyzer.model.CurrencyRate;
+import pl.analyzer.repository.CurrencyRateRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Slf4j
 public class CurrencyService {
 
     private final RestClient restClient = RestClient.create();
-    private final Map<String, BigDecimal> rateCache = new ConcurrentHashMap<>();
+
+    @Autowired
+    private CurrencyRateRepository repository;
 
     /**
-     * Zwraca kurs waluty z NBP lub z lokalnego cache, jeśli NBP nie działa.
-     * Zwraca Optional.empty(), jeśli całkowicie brakuje danych.
+     * Zwraca kurs waluty z NBP i zapisuje go do PostgreSQL.
+     * W razie awarii NBP, pobiera ostatni znany kurs z bazy danych.
      */
     public Optional<BigDecimal> getRate(String currencyCode) {
         String upperCode = currencyCode.toUpperCase();
@@ -33,24 +37,35 @@ public class CurrencyService {
                     .body(NbpResponse.class);
 
             if (response != null && !response.rates().isEmpty()) {
-                BigDecimal rate = response.rates().get(0).mid();
+                BigDecimal rateVal = response.rates().get(0).mid();
 
-                rateCache.put(upperCode, rate);
-                log.info("Zapisano do cache kurs dla {}: {}", upperCode, rate);
+                // --- NOWOŚĆ: ZAPIS DO BAZY DATY ZAMIAST CACHE ---
+                // Sprawdzamy, czy mamy już tę walutę w bazie, żeby nadpisać rekord zamiast tworzyć duplikaty
+                CurrencyRate currencyRate = repository.findByCurrencyCode(upperCode)
+                        .orElse(new CurrencyRate());
 
-                return Optional.of(rate);
+                currencyRate.setCurrencyCode(upperCode);
+                currencyRate.setRate(rateVal);
+                currencyRate.setUpdatedAt(LocalDateTime.now());
+
+                repository.save(currencyRate); // Tu Hibernate robi automatyczny INSERT lub UPDATE
+                log.info("Zapisano do bazy PostgreSQL kurs dla {}: {}", upperCode, rateVal);
+
+                return Optional.of(rateVal);
             }
         } catch (Exception e) {
-            log.error("⚠️ Błąd pobierania kursu z NBP dla {}: {}. Szukam w cache...", upperCode, e.getMessage());
+            log.error("⚠️ Błąd pobierania kursu z NBP dla {}: {}. Szukam w bazie danych...", upperCode, e.getMessage());
 
-            if (rateCache.containsKey(upperCode)) {
-                BigDecimal cachedRate = rateCache.get(upperCode);
-                log.info("ℹ️ Sukces planu awaryjnego! Zwracam kurs z cache dla {}: {}", upperCode, cachedRate);
-                return Optional.of(cachedRate);
+            // --- NOWOŚĆ: PLAN AWARYJNY Z BAZY ---
+            Optional<CurrencyRate> databaseRate = repository.findByCurrencyCode(upperCode);
+            if (databaseRate.isPresent()) {
+                BigDecimal savedRate = databaseRate.get().getRate();
+                log.info("ℹ️ Sukces planu awaryjnego! Zwracam kurs z bazy danych dla {}: {}", upperCode, savedRate);
+                return Optional.of(savedRate);
             }
         }
 
-        log.error("❌ Krytyczny błąd: NBP leży, a lokalny cache dla {} jest pusty!", upperCode);
+        log.error("❌ Krytyczny błąd: NBP leży, a baza danych dla {} jest pusta!", upperCode);
         return Optional.empty();
     }
 }

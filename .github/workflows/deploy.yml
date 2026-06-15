@@ -48,4 +48,4 @@ jobs:
             docker build -t currency-service .
             
             # Odpalamy aplikację na porcie 8080
-            docker run -d --name currency-service -p 80:8082 currency-service
+            docker run -d --name currency-service -p 80:8084 currency-service
