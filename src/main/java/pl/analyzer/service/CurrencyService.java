@@ -21,6 +21,9 @@ public class CurrencyService {
     @Autowired
     private CurrencyRateRepository repository;
 
+    @Autowired
+    private KafkaProducerService kafkaProducerService;
+
     /**
      * Zwraca kurs waluty z NBP i zapisuje go do PostgreSQL.
      * W razie awarii NBP, pobiera ostatni znany kurs z bazy danych.
@@ -50,6 +53,8 @@ public class CurrencyService {
 
                 repository.save(currencyRate); // Tu Hibernate robi automatyczny INSERT lub UPDATE
                 log.info("Zapisano do bazy PostgreSQL kurs dla {}: {}", upperCode, rateVal);
+                String message = upperCode + ";" + rateVal; // Wyśle np. "USD;4.02"
+                kafkaProducerService.sendMessage(message);
 
                 return Optional.of(rateVal);
             }
@@ -61,6 +66,10 @@ public class CurrencyService {
             if (databaseRate.isPresent()) {
                 BigDecimal savedRate = databaseRate.get().getRate();
                 log.info("ℹ️ Sukces planu awaryjnego! Zwracam kurs z bazy danych dla {}: {}", upperCode, savedRate);
+
+                String message = upperCode + ";" + savedRate; // Wyśle np. "USD;4.02"
+                kafkaProducerService.sendMessage(message);
+
                 return Optional.of(savedRate);
             }
         }
