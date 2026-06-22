@@ -71,6 +71,8 @@ services:
     container_name: nginx-proxy-acme
     depends_on:
       - nginx-proxy
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - certs:/etc/nginx/certs:rw
