@@ -43,10 +43,8 @@ jobs:
           script: |
             cd ~/app
             
-            # Gasimy całą poprzednią strukturę (jeśli istniała), żeby zwolnić porty i wyczyścić pamięć RAM
+            # 1. Gasimy starą strukturę
             docker-compose down || true
-            docker-compose up -d --build
             
-            # Uruchamiamy wszystko w tle (-d): Postgresa, Kafkę oraz budujemy świeży obraz Springa (--build)
-            # Docker Compose automatycznie wstrzytnie tutaj dane z Twojego pliku .env na serwerze!
-            docker compose up -d --build
+            # 2. Odpalamy wszystko na czysto
+            docker-compose up -d --build
