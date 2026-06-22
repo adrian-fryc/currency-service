@@ -5,7 +5,6 @@ services:
     container_name: currency-service
     build:
       context: .
-    # Zamiast ports: "80:8084" dajemy expose, żeby tylko Nginx widział ten port
     expose:
       - "8084"
     depends_on:
@@ -17,11 +16,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: secret_pass
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      # 👇 Zmienne dla Nginx Proxy, żeby automatycznie wygenerował SSL:
+      # 👇 Limity pamięci dla Springa (żeby nie zabił serwera)
+      JAVA_TOOL_OPTIONS: "-Xmx256M -Xms256M"
+      # 👇 Zmienne dla Nginx Proxy
       VIRTUAL_HOST: currency-analyzer.duckdns.org
       VIRTUAL_PORT: 8084
       LETSENCRYPT_HOST: currency-analyzer.duckdns.org
-      LETSENCRYPT_EMAIL: twoj-email@gmail.com # Wpisz swój adres email
+      LETSENCRYPT_EMAIL: twoj-email@gmail.com # 👈 Wpisz swój e-mail
 
   kafka:
     container_name: kafka-local
@@ -52,13 +53,12 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data:rw
 
-  # 👇 DOPISUJEMY AUTOMATYCZNE PROXY (To co Docker usunął)
   nginx-proxy:
     image: nginxproxy/nginx-proxy:latest
     container_name: nginx-proxy
     ports:
       - "80:80"
-      - "444:443" # Mapujemy na wolny port, jeśli 443 jest zajęty, lub klasycznie "443:443"
+      - "443:443" # 👈 Poprawione na standardowy port HTTPS
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
       - certs:/etc/nginx/certs:ro
@@ -66,7 +66,6 @@ services:
       - html:/usr/share/nginx/html
     restart: always
 
-  # 👇 DOPISUJEMY COMPANION DO CERTYFIKATÓW SSL (Let's Encrypt)
   nginx-proxy-acme:
     image: nginxproxy/acme-companion:latest
     container_name: nginx-proxy-acme
