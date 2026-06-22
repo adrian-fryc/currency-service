@@ -43,8 +43,7 @@ jobs:
           script: |
             cd ~/app
             
-            # 1. Gasimy starą strukturę
-            docker-compose down || true
+            # Dodaliśmy flagę --remove-orphans, żeby sprzątać stare pozostałości
+            docker-compose down --remove-orphans || true
             
-            # 2. Odpalamy wszystko na czysto
             docker-compose up -d --build
