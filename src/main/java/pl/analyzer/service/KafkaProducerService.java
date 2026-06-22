@@ -1,24 +1,25 @@
 package pl.analyzer.service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import pl.analyzer.model.CurrencyEvent;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor // Lombok wygeneruje konstruktor dla pola final
 public class KafkaProducerService {
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    // Zmieniamy drugi typ generyczny na nasz rekord CurrencyEvent
+    private final KafkaTemplate<String, CurrencyEvent> kafkaTemplate;
 
-    // Spring automatycznie wstrzyknie tutaj skonfigurowany KafkaTemplate
-    public KafkaProducerService(KafkaTemplate<String, String> kafkaTemplate) {
-        this.kafkaTemplate = kafkaTemplate;
-    }
+    public void sendMessage(CurrencyEvent event) {
+        log.info("👉 [Spring Producer] Wysyłam obiekt JSON do Kafki: {}", event);
 
-    public void sendMessage(String message) {
-        String topicName = "test-topic";
-
-        // Wysyłamy wiadomość do Kafki do konkretnego tematu
-        kafkaTemplate.send(topicName, message);
-
-        System.out.println("👉 [Spring Producer] Wysłano wiadomość: " + message);
+        // Jako klucz wiadomości (drugi parametr) przekazujemy kod waluty (np. "USD").
+        // To kluczowa praktyka w Kafce – gwarantuje, że zdarzenia dla tej samej waluty
+        // zawsze trafią na tę samą partycję (przyda nam się to przy Opcji B!).
+        kafkaTemplate.send("test-topic", event.currencyCode(), event);
     }
 }

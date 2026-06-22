@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import pl.analyzer.model.CurrencyEvent;
 import pl.analyzer.model.CurrencyRate;
 import pl.analyzer.repository.CurrencyRateRepository;
 
@@ -54,7 +55,7 @@ public class CurrencyService {
                 repository.save(currencyRate); // Tu Hibernate robi automatyczny INSERT lub UPDATE
                 log.info("Zapisano do bazy PostgreSQL kurs dla {}: {}", upperCode, rateVal);
                 String message = upperCode + ";" + rateVal; // Wyśle np. "USD;4.02"
-                kafkaProducerService.sendMessage(message);
+                kafkaProducerService.sendMessage(new CurrencyEvent(upperCode, rateVal, LocalDateTime.now(), "NBP"));
 
                 return Optional.of(rateVal);
             }
@@ -68,7 +69,7 @@ public class CurrencyService {
                 log.info("ℹ️ Sukces planu awaryjnego! Zwracam kurs z bazy danych dla {}: {}", upperCode, savedRate);
 
                 String message = upperCode + ";" + savedRate; // Wyśle np. "USD;4.02"
-                kafkaProducerService.sendMessage(message);
+                kafkaProducerService.sendMessage(new CurrencyEvent(upperCode, savedRate, LocalDateTime.now(), "DATABASE"));
 
                 return Optional.of(savedRate);
             }
