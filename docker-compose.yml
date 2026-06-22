@@ -23,7 +23,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       # 👇 POPRAWKA: Mówimy Springowi, że Kafka to nazwa kontenera "kafka" w Dockerze
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
     depends_on:
       - postgres-db
       - kafka # 👈 POPRAWKA: Aplikacja czeka na bazę oraz na Kafkę, zanim odpali Olę i Borysa
